@@ -14,7 +14,7 @@ python -m venv .venv
 pip install -r backend/requirements.txt
 ```
 
-2. Copy `.env.example` to `.env` and set `DATABASE_URL` and `MAPBOX_TOKEN`.
+2. Create `backend/.env` and set `DATABASE_URL`. To enable the Compass AI chat, add `GEMINI_API_KEY=your_key_from_google_ai_studio`. The key stays on the backend and is never exposed to the browser.
 
 3. Create DB tables (python interactive):
 
@@ -33,7 +33,7 @@ python -m backend.app.seed_data
 4. Run the API
 
 ```bash
-uvicorn backend.app.main:app --reload --port 8000
+uvicorn backend.app.main:app --reload --port 8001
 ```
 
 Quick start (frontend):
@@ -43,6 +43,16 @@ cd frontend
 npm install
 VITE_MAPBOX_TOKEN=your_token npm run dev
 ```
+
+## Gemini AI chat
+
+Create a free-tier Gemini API key in [Google AI Studio](https://aistudio.google.com/app/apikey), then add it to `backend/.env`:
+
+```env
+GEMINI_API_KEY=your_key_here
+```
+
+Restart the FastAPI server. The UI sends chat messages to `/api/ai/chat`; that endpoint securely calls Gemini on the server. Without a key, the interface remains usable and tells you how to connect it.
 
 Notes:
 - Replace Mapbox token in environment. You can also switch to Google Maps tile provider.

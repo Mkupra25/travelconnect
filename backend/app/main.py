@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import destinations, businesses, auth, trips, admin
+from .routes import destinations, businesses, auth, trips, admin, ai
 
 app = FastAPI(title="TravelConnect API")
 
@@ -17,6 +17,7 @@ app.include_router(businesses.router, prefix="/api/businesses", tags=["businesse
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(trips.router, prefix="/api/trips", tags=["trips"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 
 
 @app.get("/")

@@ -1,17 +1,36 @@
-import React from 'react'
+import { FormEvent, useState } from 'react'
+import axios from 'axios'
 import MapView from './pages/MapView'
 import Planner from './pages/Planner'
-import { useState } from 'react'
 
-export default function App(){
-  const [view, setView] = useState<'map'|'planner'>('map')
-  return (
-    <div style={{height: '100vh'}}>
-      <div style={{position: 'absolute', zIndex: 1000, padding: 10}}>
-        <button onClick={()=>setView('map')}>Map</button>
-        <button onClick={()=>setView('planner')}>Planner</button>
-      </div>
-      {view==='map' ? <MapView /> : <Planner />}
-    </div>
-  )
+type Section = 'home' | 'plan' | 'map' | 'visited' | 'friends' | 'profile'
+type ChatMessage = { id: number; role: 'assistant' | 'user'; text: string }
+
+const starterMessages: ChatMessage[] = [{ id: 1, role: 'assistant', text: "Hello, I’m Compass — your TravelConnect AI. Tell me where you’d like to go, when, and what kind of trip you want." }]
+const tripIdeas = [{ city: 'Tbilisi', country: 'Georgia', date: '12–15 Sep', color: 'violet' }, { city: 'Batumi', country: 'Georgia', date: '21–23 Sep', color: 'orange' }, { city: 'Cappadocia', country: 'Türkiye', date: 'Save for later', color: 'blue' }]
+
+function App() {
+  const [section, setSection] = useState<Section>('home')
+  const [messages, setMessages] = useState<ChatMessage[]>(starterMessages)
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const goTo = (next: Section) => setSection(next)
+  const sendMessage = async (event: FormEvent) => {
+    event.preventDefault(); const text = input.trim(); if (!text || loading) return
+    const nextMessages = [...messages, { id: Date.now(), role: 'user' as const, text }]
+    setMessages(nextMessages); setInput(''); setLoading(true)
+    try { const response = await axios.post('/api/ai/chat', { messages: nextMessages.map(({ role, text: messageText }) => ({ role, text: messageText })) }); setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: response.data.reply }]) }
+    catch { setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', text: 'I’m not connected to Gemini yet. Add GEMINI_API_KEY to backend/.env, restart the API, and I’ll be ready to plan with you.' }]) }
+    finally { setLoading(false) }
+  }
+  const navItems: { label: string; section: Section; icon: string }[] = [{ label: 'Home', section: 'home', icon: '⌂' }, { label: 'Plan trip', section: 'plan', icon: '✦' }, { label: 'Map', section: 'map', icon: '⌖' }, { label: 'Visited', section: 'visited', icon: '◉' }, { label: 'Friends', section: 'friends', icon: '♧' }]
+  const dashboard = <main className="dashboard">
+    <aside className="left-rail"><section className="profile-card"><div className="cover" /><div className="profile-avatar">AM</div><h2>Alex Morgan</h2><p>Tbilisi, Georgia</p><div className="profile-stats"><button><strong>12</strong><span>places</span></button><button><strong>31</strong><span>saved</span></button><button onClick={() => goTo('friends')}><strong>48</strong><span>friends</span></button></div><button className="view-profile" onClick={() => goTo('profile')}>View profile</button></section><section className="rail-card"><p className="card-label">UP NEXT</p><h3>Tbilisi Escape</h3><p>12–15 September · 3 days</p><button onClick={() => goTo('plan')}>Open itinerary →</button></section></aside>
+    <section className="chat-panel"><div className="chat-header"><div><span className="eyebrow">YOUR AI TRAVEL COMPANION</span><h1>Where shall we go next?</h1><p>Ask for itineraries, local favorites, budgets, or a completely new adventure.</p></div><div className="ai-badge"><i /> Compass AI</div></div><div className="suggestions"><button onClick={() => setInput('Plan a 4-day food and culture trip in Tbilisi')}>Plan a 4-day Tbilisi trip</button><button onClick={() => setInput('Find a sunny weekend escape under $400')}>Weekend under $400</button><button onClick={() => setInput('Build a relaxed itinerary with local food recommendations')}>Build an itinerary</button></div><div className="messages" aria-live="polite">{messages.map((message) => <div className={`message ${message.role}`} key={message.id}><div className="message-icon">{message.role === 'assistant' ? '✦' : 'AM'}</div><div>{message.text}</div></div>)}{loading && <div className="message assistant"><div className="message-icon">✦</div><div className="typing"><i /><i /><i /></div></div>}</div><form className="composer" onSubmit={sendMessage}><input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Message Compass AI…" aria-label="Message Compass AI"/><button type="submit" disabled={!input.trim() || loading} aria-label="Send message">↑</button></form><p className="chat-disclaimer">Compass can make mistakes. Always check live prices, availability, and local travel advice.</p></section>
+    <aside className="right-rail"><section className="rail-card trip-list"><div className="card-title"><h3>Your trips</h3><button onClick={() => goTo('plan')}>See all</button></div>{tripIdeas.map((idea) => <button className="trip-row" key={idea.city} onClick={() => goTo('plan')}><span className={`trip-dot ${idea.color}`} /><span><strong>{idea.city}</strong><small>{idea.date}</small></span><b>›</b></button>)}<button className="create-trip" onClick={() => goTo('plan')}>+ Create a trip</button></section><section className="rail-card save-card"><div className="save-illustration">⌂<span>✦</span></div><h3>Keep every idea close</h3><p>Save places and plans to make your next trip effortless.</p><button onClick={() => setSaved(true)}>{saved ? 'Saved to your profile' : 'Start saving places'}</button></section></aside>
+  </main>
+  const content = section === 'map' ? <section className="full-page-panel"><div className="page-heading"><span>DISCOVER</span><h1>Explore the map</h1></div><div className="map-frame"><MapView /></div></section> : section === 'plan' ? <section className="full-page-panel planner-page"><Planner language="en" /></section> : section === 'visited' ? <section className="simple-page"><span className="eyebrow">YOUR TRAVEL HISTORY</span><h1>Places you’ve experienced</h1><div className="visited-grid">{tripIdeas.map((idea) => <article className={`place-card ${idea.color}`} key={idea.city}><span>✓ Visited</span><h2>{idea.city}</h2><p>{idea.country}</p></article>)}</div></section> : section === 'friends' ? <section className="simple-page"><span className="eyebrow">YOUR NETWORK</span><h1>Travel with your people</h1><div className="connections">{['Nino K.', 'Luka M.', 'Mariam G.'].map((friend, index) => <article className="connection" key={friend}><div className="mini-avatar">{friend[0]}</div><div><h3>{friend}</h3><p>{[12, 8, 5][index]} places in common</p></div><button>Connect</button></article>)}</div></section> : section === 'profile' ? <section className="simple-page profile-page"><div className="profile-hero"><div className="profile-avatar">AM</div><div><span className="eyebrow">TRAVELER PROFILE</span><h1>Alex Morgan</h1><p>Tbilisi, Georgia · Curious city walker</p></div></div><h2>Your travel identity</h2><p className="profile-copy">You’ve explored 12 cities, collected 31 saved places, and your next journey is Tbilisi.</p></section> : dashboard
+  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => goTo('home')} aria-label="TravelConnect home"><span className="brand-mark">✦</span><span>travelconnect</span></button><nav className="primary-nav" aria-label="Primary navigation">{navItems.map((item) => <button key={item.section} className={section === item.section ? 'nav-item active' : 'nav-item'} onClick={() => goTo(item.section)}><span>{item.icon}</span>{item.label}</button>)}</nav><div className="topbar-actions"><button className="new-trip" onClick={() => goTo('plan')}>+ Plan a new trip</button><button className="avatar" onClick={() => goTo('profile')} aria-label="Open profile">AM</button></div></header>{content}</div>
 }
+export default App
