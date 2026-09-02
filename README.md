@@ -1,0 +1,75 @@
+TravelConnect - Prototype
+
+Stack:
+- Frontend: React + TypeScript + Vite + Leaflet (Mapbox tiles)
+- Backend: FastAPI + SQLAlchemy (Postgres in production, SQLite for dev)
+
+Quick start (backend):
+
+1. Create a virtualenv and install dependencies
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+pip install -r backend/requirements.txt
+```
+
+2. Copy `.env.example` to `.env` and set `DATABASE_URL` and `MAPBOX_TOKEN`.
+
+3. Create DB tables (python interactive):
+
+```python
+from backend.app import models
+from backend.app.database import engine
+models.Base.metadata.create_all(bind=engine)
+```
+
+Or run the seed script to create tables and sample data:
+
+```bash
+python -m backend.app.seed_data
+```
+
+4. Run the API
+
+```bash
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+Quick start (frontend):
+
+```bash
+cd frontend
+npm install
+VITE_MAPBOX_TOKEN=your_token npm run dev
+```
+
+Notes:
+- Replace Mapbox token in environment. You can also switch to Google Maps tile provider.
+- Current prototype includes endpoints to list/create `destinations` and `businesses`.
+- Next steps: auth, recommendations, bot-checker, messaging, admin panel.
+
+## Connecting to GitHub
+
+To connect and push this project to GitHub, follow one of the options below.
+
+Option A — Manual using git and GitHub website
+
+```bash
+git init
+git add .
+git commit -m "Initial scaffold: TravelConnect prototype"
+# Create a repository on GitHub (via web UI), then:
+git remote add origin https://github.com/<your-username>/<repo-name>.git
+git branch -M main
+git push -u origin main
+```
+
+Option B — Using GitHub CLI (`gh`)
+
+```bash
+gh repo create <your-username>/travelconnect --public --source=. --remote=origin --push
+```
+
+The repository includes a basic CI workflow at `.github/workflows/ci.yml` that installs backend dependencies and builds the frontend. Add repository secrets (for example `VITE_MAPBOX_TOKEN`, `DATABASE_URL`, `SECRET_KEY`) in the GitHub repo settings under Secrets → Actions.
+
