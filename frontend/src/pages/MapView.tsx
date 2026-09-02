@@ -36,31 +36,46 @@ export default function MapView(){
   const [businesses, setBusinesses] = useState<Biz[]>([])
 
   useEffect(()=>{
-    axios.get('/api/destinations/').then(r=>setDestinations(r.data)).catch(()=>{})
-    axios.get('/api/businesses/').then(r=>setBusinesses(r.data)).catch(()=>{})
+    axios.get('/api/destinations/').then(r => {
+      const data = Array.isArray(r.data) ? r.data : []
+      setDestinations(data)
+    }).catch(() => setDestinations([]))
+
+    axios.get('/api/businesses/').then(r => {
+      const data = Array.isArray(r.data) ? r.data : []
+      setBusinesses(data)
+    }).catch(() => setBusinesses([]))
   },[])
 
   const center: [number, number] = [41.7151, 44.8271] // default: Tbilisi
+  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN
+  const tileUrl = mapboxToken
+    ? `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+  const safeDestinations = Array.isArray(destinations) ? destinations : []
+  const safeBusinesses = Array.isArray(businesses) ? businesses : []
 
   return (
     <MapContainer center={center} zoom={6} style={{height: '100%'}}>
       <TileLayer
-        url={`https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`}
-        id="mapbox/streets-v11"
-        tileSize={512}
-        zoomOffset={-1}
+        url={tileUrl}
+        attribution={mapboxToken ? '&copy; Mapbox' : '&copy; OpenStreetMap contributors'}
+        id={mapboxToken ? 'mapbox/streets-v11' : undefined}
+        tileSize={mapboxToken ? 512 : 256}
+        zoomOffset={mapboxToken ? -1 : 0}
       />
 
-      {destinations.map(d=> d.latitude && d.longitude && (
-        <Marker key={`dest-${d.id}`} position={[d.latitude, d.longitude]}>
+      {safeDestinations.filter(d => typeof d.latitude === 'number' && typeof d.longitude === 'number').map(d => (
+        <Marker key={`dest-${d.id}`} position={[d.latitude as number, d.longitude as number]}>
           <Popup>
             <strong>{d.name}</strong><br />Rating: {d.rating ?? 'n/a'}
           </Popup>
         </Marker>
       ))}
 
-      {businesses.map(b=> b.latitude && b.longitude && (
-        <Marker key={`biz-${b.id}`} position={[b.latitude, b.longitude]}>
+      {safeBusinesses.filter(b => typeof b.latitude === 'number' && typeof b.longitude === 'number').map(b => (
+        <Marker key={`biz-${b.id}`} position={[b.latitude as number, b.longitude as number]}>
           <Popup>
             <strong>{b.name}</strong><br />Rating: {b.rating ?? 'n/a'}
           </Popup>
