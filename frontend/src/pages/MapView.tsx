@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import axios from 'axios'
 import L from 'leaflet'
@@ -35,9 +35,22 @@ type MapViewProps = { showRoute?: boolean }
 
 const demoRoute: [number, number][] = [[41.6938, 44.8015], [41.6915, 44.8087], [41.6882, 44.8112], [41.6871, 44.8179]]
 
+function MapControls({ satellite, setSatellite }: { satellite: boolean; setSatellite: (value: boolean) => void }) {
+  const map = useMap()
+  const locate = () => map.locate({ setView: true, maxZoom: 15 })
+  return <div className="map-controls"><button type="button" onClick={() => setSatellite(!satellite)}>{satellite ? 'Map view' : 'Satellite'}</button><button type="button" onClick={locate} aria-label="Find my location">◎</button></div>
+}
+
+function LocationMarker() {
+  const [position, setPosition] = useState<[number, number] | null>(null)
+  useMapEvents({ locationfound: event => setPosition([event.latlng.lat, event.latlng.lng]) })
+  return position ? <Marker position={position}><Popup>You are here</Popup></Marker> : null
+}
+
 export default function MapView({ showRoute = false }: MapViewProps){
   const [destinations, setDestinations] = useState<Dest[]>([])
   const [businesses, setBusinesses] = useState<Biz[]>([])
+  const [satellite, setSatellite] = useState(false)
 
   useEffect(()=>{
     axios.get('/api/destinations/').then(r => {
@@ -51,11 +64,14 @@ export default function MapView({ showRoute = false }: MapViewProps){
     }).catch(() => setBusinesses([]))
   },[])
 
-  const center: [number, number] = [41.7151, 44.8271] // default: Tbilisi
+  const center: [number, number] = [41.6938, 44.8086]
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN
-  const tileUrl = mapboxToken
+  const tileUrl = satellite && mapboxToken
     ? `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    : tileUrlForMap(mapboxToken)
+  const satelliteUrl = mapboxToken
+    ? `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`
+    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
   const builtInAttractions: Dest[] = [
     { id: -1, name: 'Narikala Fortress', latitude: 41.6871, longitude: 44.8086, rating: 4.8 },
@@ -70,14 +86,16 @@ export default function MapView({ showRoute = false }: MapViewProps){
   const safeBusinesses = Array.isArray(businesses) ? businesses : []
 
   return (
-    <MapContainer center={center} zoom={6} style={{height: '100%'}}>
+    <MapContainer center={center} zoom={14} scrollWheelZoom style={{height: '100%'}}>
       <TileLayer
-        url={tileUrl}
+        url={satellite ? satelliteUrl : tileUrl}
         attribution={mapboxToken ? '&copy; Mapbox' : '&copy; OpenStreetMap contributors'}
         id={mapboxToken ? 'mapbox/streets-v11' : undefined}
         tileSize={mapboxToken ? 512 : 256}
         zoomOffset={mapboxToken ? -1 : 0}
       />
+      <MapControls satellite={satellite} setSatellite={setSatellite} />
+      <LocationMarker />
 
       {safeDestinations.filter(d => typeof d.latitude === 'number' && typeof d.longitude === 'number').map(d => (
         <Marker key={`dest-${d.id}`} position={[d.latitude as number, d.longitude as number]}>
@@ -97,4 +115,10 @@ export default function MapView({ showRoute = false }: MapViewProps){
       {showRoute && <Polyline positions={demoRoute} pathOptions={{ color: '#8b75ec', weight: 5, opacity: 0.9 }} />}
     </MapContainer>
   )
+}
+
+function tileUrlForMap(mapboxToken?: string) {
+  return mapboxToken
+    ? `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`
+    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 }
