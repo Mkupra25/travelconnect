@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from .. import crud, schemas, models
 from ..database import get_db
-from ..auth import get_password_hash, verify_password, create_access_token
+from ..auth import get_password_hash, verify_password, create_access_token, get_current_user
 
 router = APIRouter()
 
@@ -33,3 +33,8 @@ def token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     access_token = create_access_token({"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=schemas.UserOut)
+def current_user(user: models.User = Depends(get_current_user)):
+    return user

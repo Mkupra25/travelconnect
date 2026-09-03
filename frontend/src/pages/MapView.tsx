@@ -31,7 +31,7 @@ type Biz = {
   rating?: number
 }
 
-type MapViewProps = { showRoute?: boolean }
+type MapViewProps = { showRoute?: boolean; routeNames?: string[] }
 
 const demoRoute: [number, number][] = [[41.6938, 44.8015], [41.6915, 44.8087], [41.6882, 44.8112], [41.6871, 44.8179]]
 
@@ -47,7 +47,7 @@ function LocationMarker() {
   return position ? <Marker position={position}><Popup>You are here</Popup></Marker> : null
 }
 
-export default function MapView({ showRoute = false }: MapViewProps){
+export default function MapView({ showRoute = false, routeNames }: MapViewProps){
   const [destinations, setDestinations] = useState<Dest[]>([])
   const [businesses, setBusinesses] = useState<Biz[]>([])
   const [satellite, setSatellite] = useState(false)
@@ -75,6 +75,8 @@ export default function MapView({ showRoute = false }: MapViewProps){
 
   const builtInAttractions: Dest[] = [
     { id: -1, name: 'Narikala Fortress', latitude: 41.6871, longitude: 44.8086, rating: 4.8 },
+    { id: -5, name: 'Fabrika Courtyard', latitude: 41.7070, longitude: 44.7935, rating: 4.6 },
+    { id: -6, name: 'Abanotubani Baths', latitude: 41.6885, longitude: 44.8112, rating: 4.7 },
     { id: -2, name: 'Holy Trinity Cathedral', latitude: 41.6979, longitude: 44.8162, rating: 4.7 },
     { id: -3, name: 'Mtatsminda Park', latitude: 41.6943, longitude: 44.7865, rating: 4.6 },
     { id: -4, name: 'Dry Bridge Market', latitude: 41.7060, longitude: 44.8051, rating: 4.5 },
@@ -84,6 +86,10 @@ export default function MapView({ showRoute = false }: MapViewProps){
     : []
   const safeDestinations = mappedDestinations.length ? mappedDestinations : builtInAttractions
   const safeBusinesses = Array.isArray(businesses) ? businesses : []
+  const selectedRouteNames = routeNames ?? builtInAttractions.map(destination => destination.name)
+  const routeDestinations = builtInAttractions.filter(destination => selectedRouteNames.includes(destination.name))
+  const routePositions = routeDestinations.filter(destination => typeof destination.latitude === 'number' && typeof destination.longitude === 'number').map(destination => [destination.latitude as number, destination.longitude as number] as [number, number])
+  const visibleDestinations = showRoute ? routeDestinations : safeDestinations
 
   return (
     <MapContainer center={center} zoom={14} scrollWheelZoom style={{height: '100%'}}>
@@ -97,7 +103,7 @@ export default function MapView({ showRoute = false }: MapViewProps){
       <MapControls satellite={satellite} setSatellite={setSatellite} />
       <LocationMarker />
 
-      {safeDestinations.filter(d => typeof d.latitude === 'number' && typeof d.longitude === 'number').map(d => (
+      {visibleDestinations.filter(d => typeof d.latitude === 'number' && typeof d.longitude === 'number').map(d => (
         <Marker key={`dest-${d.id}`} position={[d.latitude as number, d.longitude as number]}>
           <Popup>
             <strong>{d.name}</strong><br />Attraction<br />Rating: {d.rating ?? 'n/a'}
@@ -112,7 +118,7 @@ export default function MapView({ showRoute = false }: MapViewProps){
           </Popup>
         </Marker>
       ))}
-      {showRoute && <Polyline positions={demoRoute} pathOptions={{ color: '#8b75ec', weight: 5, opacity: 0.9 }} />}
+      {showRoute && routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: '#8b75ec', weight: 5, opacity: 0.9 }} />}
     </MapContainer>
   )
 }
